@@ -102,7 +102,7 @@ function _newdesign(f::FormulaTerm, original::DataFrame, new)
     t = copy(original); t[!, :__response__] = zeros(nrow(t))
     f2 = FormulaTerm(Term(:__response__), f.rhs)
     sf = apply_schema(f2, schema(f2, t), StatisticalModel)
-    nt = DataFrame(Tables.columntable(new)); nt[!, :__response__] = zeros(nrow(nt))
+    nt = DataFrame(Tables.columntable(new)); nt[!, :__response__] = zeros(nrow(nt))   # (already scaled)
     M = modelcols(sf.rhs, nt)
     return Matrix{Float64}(M isa AbstractVector ? reshape(M, :, 1) : M)
 end
@@ -110,6 +110,7 @@ end
 function _designs(f::OccupancyFit, newdata)
     d = f.data
     newdata === nothing && return d.X, d.W
+    newdata = _apply_scaling(DataFrame(Tables.columntable(newdata)), d.scaling)
     X = _newdesign(d.formulas.occupancy, d.sites, newdata)
     W = isempty(d.pairs) ? zeros(size(X, 1), 0) : _newdesign(d.formulas.interaction, d.sites, newdata)
     return X, W

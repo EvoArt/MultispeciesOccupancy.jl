@@ -87,11 +87,9 @@ end
 
 @testset "matches unmarked::occuMulti on the MesoCarnivores data" begin
     meso = mesocarnivores()
-    sites = copy(meso.sites)
-    for v in (:Dist_5km, :HDens_5km)                     # as R's scale()
-        sites[!, v] = (sites[!, v] .- mean(sites[!, v])) ./ std(sites[!, v])
-    end
-    d = OccupancyData(meso.detections; sites, occupancy=@formula(ψ ~ Dist_5km + HDens_5km))
+    d = OccupancyData(meso.detections; sites=meso.sites, scale=[:Dist_5km, :HDens_5km],   # as R's scale()
+                      occupancy=@formula(ψ ~ Dist_5km + HDens_5km))
+    @test abs(mean(d.X[:, 2])) < 1e-12 && std(d.X[:, 3]) ≈ 1
     @test (nsites(d), nvisits(d), d.species) == (1437, 3, ["bobcat", "coyote", "redfox"])
     ref = CSV.read(joinpath(@__DIR__, "reference_estimates.csv"), DataFrame)
     est = ref.estimate
@@ -121,6 +119,17 @@ end
         @test nrow(marginal_occupancy(fit)) == 2
         @test occursin("interaction", sprint(show, MIME"text/plain"(), fit))
     end
+end
+
+@testset "predictions at new covariates use the fitted scaling" begin
+    rng = StableRNG(6)
+    y, _ = simulate(rng; n=200, J=3)
+    sites = DataFrame(forest=100 .+ 10 .* randn(rng, 200))
+    d = OccupancyData(y; species=["a", "b"], sites, scale=[:forest], occupancy=@formula(ψ ~ forest))
+    fit = occupancy(d; draws=100, warmup=200, chains=1, rng=StableRNG(7))
+    P = occupancy_probabilities(fit; newdata=sites)
+    @test P ≈ occupancy_probabilities(fit)            # the fitted sites, scaled the same way
+    @test size(occupancy_probabilities(fit; newdata=DataFrame(forest=[90.0, 110.0]))) == (2, 2)
 end
 
 end

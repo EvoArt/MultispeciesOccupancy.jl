@@ -1,6 +1,5 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-MultispeciesOccupancy = "31d73cd6-f1cc-4a25-8fbd-b600c4a11298"
 
 [compat]
 Documenter = "1"

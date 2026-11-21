@@ -23,8 +23,12 @@ Detection histories of several species at the same sites, ready to fit.
   removes interactions, giving independent single-species models.
 - `detection`: detection probability, one set of coefficients per species.
 
-The left-hand sides (`ψ`, `ψψ`, `p`) only label the formulas. Scale continuous
-covariates first; the default priors assume coefficients of order one.
+- `scale`: site covariates to standardise (mean 0, standard deviation 1) before
+  fitting, e.g. `scale = [:forest, :elevation]`. The default priors assume
+  coefficients of order one, so scale continuous covariates. Predictions at
+  `newdata` apply the same scaling.
+
+The left-hand sides (`ψ`, `ψψ`, `p`) only label the formulas.
 """
 struct OccupancyData
     y::Array{Union{Missing,Int},3}          # sites × visits × species
@@ -40,11 +44,12 @@ struct OccupancyData
     pairs::Vector{Tuple{Int,Int}}
     states::BitMatrix                       # the 2^S joint presence states
     detected::BitMatrix                     # sites × species: detected at least once
+    scaling::Dict{Symbol,Tuple{Float64,Float64}}   # column => (mean, sd) applied by `scale`
 end
 
 function OccupancyData(detections; species=nothing, sites=nothing, visits=(;),
                        occupancy=@formula(ψ ~ 1), interaction=@formula(ψψ ~ 1),
-                       detection=@formula(p ~ 1))
+                       detection=@formula(p ~ 1), scale=Symbol[])
     y, names_ = _detection_array(detections, species)
     n, J, S = size(y)
     S >= 1 || throw(ArgumentError("no species"))
@@ -53,6 +58,13 @@ function OccupancyData(detections; species=nothing, sites=nothing, visits=(;),
         site_tbl = DataFrame(__site__ = 1:n)
     end
     nrow(site_tbl) == n || throw(DimensionMismatch("$(nrow(site_tbl)) rows of site covariates for $n sites"))
+    scaling = Dict{Symbol,Tuple{Float64,Float64}}()
+    for v in Symbol.(scale)
+        String(v) in names(site_tbl) || throw(ArgumentError("cannot scale $v: no such site covariate"))
+        x = site_tbl[!, v]
+        scaling[v] = (mean(x), std(x))
+    end
+    site_tbl = _apply_scaling(site_tbl, scaling)
     X, xn = _design(occupancy, site_tbl)
     pairs = all_pairs(S)
     W, wn = isempty(pairs) ? (zeros(n, 0), String[]) : _design(interaction, site_tbl)
@@ -61,7 +73,16 @@ function OccupancyData(detections; species=nothing, sites=nothing, visits=(;),
     V = reshape(Vl, n, J, size(Vl, 2))
     detected = BitMatrix([any(v -> !ismissing(v) && v > 0, view(y, i, :, s)) for i in 1:n, s in 1:S])
     return OccupancyData(y, names_, site_tbl, X, W, V, xn, wn, vn,
-                         (; occupancy, interaction, detection), pairs, occupancy_states(S), detected)
+                         (; occupancy, interaction, detection), pairs, occupancy_states(S), detected, scaling)
+end
+
+function _apply_scaling(tbl, scaling)
+    isempty(scaling) && return tbl
+    t = copy(tbl)
+    for (v, (μ, σ)) in scaling
+        String(v) in names(t) && (t[!, v] = (t[!, v] .- μ) ./ σ)
+    end
+    return t
 end
 
 """
