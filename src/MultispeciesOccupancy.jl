@@ -33,7 +33,7 @@ using Random: Random, AbstractRNG
 using Statistics: mean, std, quantile
 using Printf: @printf
 
-export OccupancyData, nsites, nvisits, nspecies
+export OccupancyData   # nsites, nvisits, nspecies: qualified (PhyloBuilder exports a different nsites)
 export MultivariateBernoulli, state_probabilities, occupancy_states, all_pairs
 export marginal_loglik, occupancy_loglik, detection_loglik
 export rota_model, rota_gibbs, LatentStates, DetectionPG

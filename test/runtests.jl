@@ -1,5 +1,6 @@
 using Test, Statistics, StableRNGs
 using MultispeciesOccupancy, DataFrames, CSV
+using MultispeciesOccupancy: nsites, nvisits, nspecies
 using Distributions: logpdf, Bernoulli
 using LogExpFunctions: logistic, logsumexp
 
