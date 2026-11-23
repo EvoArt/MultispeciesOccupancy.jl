@@ -1,5 +1,9 @@
 # MultispeciesOccupancy.jl
 
+[![CI](https://github.com/EvoArt/MultispeciesOccupancy.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/EvoArt/MultispeciesOccupancy.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Coverage](https://codecov.io/gh/EvoArt/MultispeciesOccupancy.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/EvoArt/MultispeciesOccupancy.jl)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://EvoArt.github.io/MultispeciesOccupancy.jl/dev/)
+
 Occupancy models for several species at once, with species interactions
 ([Rota et al. 2016](https://doi.org/10.1111/2041-210X.12587)). Each site's joint
 presence of the species follows a multivariate Bernoulli distribution: first-order
