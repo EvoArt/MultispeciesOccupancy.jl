@@ -133,4 +133,37 @@ end
     @test size(occupancy_probabilities(fit; newdata=DataFrame(forest=[90.0, 110.0]))) == (2, 2)
 end
 
+@testset "other inputs, one species, argument checks" begin
+    rng = StableRNG(8)
+    y, _ = simulate(rng; n=40, J=3)
+    # a vector of detection matrices, and a NamedTuple picked by species name
+    v = OccupancyData([y[:, :, 1], y[:, :, 2]]; species=["fox", "badger"])
+    nt = OccupancyData((fox=y[:, :, 1], badger=y[:, :, 2]); species=["badger", "fox"])
+    @test v.species == ["fox", "badger"] && nt.species == ["badger", "fox"]
+    @test isequal(v.y[:, :, 1], nt.y[:, :, 2])
+    @test_throws ArgumentError OccupancyData([y[:, :, 1], y[:, :, 2]])
+    @test_throws DimensionMismatch OccupancyData(y; species=["only one"])
+    # the state-table constructor with non-Vector or mixed-type parameters
+    st = MultispeciesOccupancy.occupancy_states(2)
+    m = MultivariateBernoulli(0.1:0.1:0.2, [1], [(1, 2)], st)
+    @test m.f1 == [0.1, 0.2] && eltype(m.f2) == Float64
+    @test_throws DimensionMismatch MultivariateBernoulli(0.1:0.1:0.2, [1, 2], [(1, 2)], st)
+    @test_throws DimensionMismatch MultivariateBernoulli(0.1:0.1:0.3, [1, 2, 3], all_pairs(3), st)
+    @test_throws DimensionMismatch MultivariateBernoulli([0.1, 0.2], [1.0, 2.0])
+    # the categorical draw falls back to the last state when the weights are NaN
+    @test MultispeciesOccupancy._draw_state(StableRNG(1), [NaN, NaN]) == 2
+    # a single species has no interaction parameters, under either sampler
+    d1 = OccupancyData(y[:, :, 1:1])
+    for method in (:nuts, :gibbs)
+        f = occupancy(d1; method, draws=50, warmup=50, chains=1, rng=StableRNG(9),
+                      prior_sd=(occupancy=1.5,))
+        @test nrow(coeftable(f)) == 2
+    end
+    @test_throws ArgumentError occupancy(d1; method=:mh)
+    # species picked by index
+    f2 = occupancy(OccupancyData(y; species=["a", "b"]); draws=50, warmup=50, chains=1, rng=StableRNG(10))
+    @test conditional_occupancy(f2, 1, 2 => true).mean ≈ conditional_occupancy(f2, "a", "b" => true).mean
+    @test_throws ArgumentError conditional_occupancy(f2, "c", "b" => true)
+end
+
 end
