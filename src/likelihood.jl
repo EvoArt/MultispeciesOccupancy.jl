@@ -43,10 +43,18 @@ end
 Base.length(d::MultivariateBernoulli) = length(d.f1)
 Base.eltype(::Type{<:MultivariateBernoulli}) = Bool
 
-"All `(s, t)` species pairs with `s < t`, in the order used for interaction terms."
+"""
+    all_pairs(S) -> Vector{Tuple{Int,Int}}
+
+All species pairs `(s, t)` with `s < t`, in interaction-term order.
+"""
 all_pairs(S::Integer) = [(s, t) for s in 1:S for t in s+1:S]
 
-"All `2^S` presence vectors as the rows of a `BitMatrix`."
+"""
+    occupancy_states(S) -> BitMatrix
+
+All `2^S` presence vectors as rows. Throws for `S > 16`.
+"""
 function occupancy_states(S::Integer)
     S <= 16 || throw(ArgumentError("$S species give 2^$S joint states; the exact likelihood is limited to 16"))
     return BitMatrix([((k - 1) >> (s - 1)) & 1 == 1 for k in 1:2^S, s in 1:S])
@@ -78,7 +86,11 @@ function Distributions._rand!(rng::AbstractRNG, d::MultivariateBernoulli, z::Abs
     return z
 end
 
-"Probability of each joint state (the rows of `occupancy_states`)."
+"""
+    state_probabilities(d::MultivariateBernoulli) -> Vector
+
+Probability of each joint state, ordered as the rows of [`occupancy_states`](@ref).
+"""
 state_probabilities(d::MultivariateBernoulli) = softmax(_state_logits(d))
 
 function _draw_state(rng, lp)
